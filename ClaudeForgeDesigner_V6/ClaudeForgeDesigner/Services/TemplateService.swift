@@ -21,6 +21,7 @@ struct TemplateService {
             GeneratedFile(relativePath: "\(root)/design-examples/palette.svg", content: paletteSVG(vm: vm), purpose: "A simple visual color reference image for the selected palette."),
             GeneratedFile(relativePath: "\(root)/design-examples/window-wireframe.svg", content: windowWireframeSVG(vm: vm), purpose: "A lightweight structural mock showing the chosen layout approach."),
             GeneratedFile(relativePath: "\(root)/design-examples/component-sheet.svg", content: componentSheetSVG(vm: vm), purpose: "A simple component reference sheet for buttons, menus, inputs, and layout chrome."),
+            GeneratedFile(relativePath: "\(root)/design-examples/design-tokens.json", content: designTokensJSON(vm: vm), purpose: "Machine-readable design tokens (colors, typography, spacing, materials, controls, navigation, animation) that Claude can use directly when writing SwiftUI code."),
             GeneratedFile(relativePath: "\(root)/screenshots/README.txt", content: screenshotsReadme(vm: vm), purpose: "Explains what kinds of screenshots or images belong in screenshots/ and how Claude should interpret them."),
             GeneratedFile(relativePath: "\(root)/repo/github-setup.txt", content: githubSetup(vm: vm), purpose: "GitHub clone/setup instructions, token/API repo-creation guidance, and the selected SSH or HTTPS flows."),
             GeneratedFile(relativePath: "\(root)/repo/terminal-cheatsheet.txt", content: terminalCheatSheet(vm: vm), purpose: "Common terminal navigation, git commands, and Claude Code helper commands for this project pack."),
@@ -687,5 +688,146 @@ How to use it
   <text x='530' y='356' font-size='14' fill='#444444'>Surface: \(vm.surfaceStyle.rawValue)</text>
 </svg>
 """
+    }
+
+    // MARK: - Design tokens (machine-readable)
+
+    private func designTokensJSON(vm: WizardViewModel) -> String {
+        let swatches = vm.colorPalette.swatches
+        // Guard against a palette with fewer than 5 swatches (current data always has 5).
+        let safe: (Int) -> String = { idx in idx < swatches.count ? swatches[idx] : "#000000" }
+
+        let typography = typographyScale(vm.typographyStyle)
+        let spacing = spacingScale(vm.densityStyle)
+        let materials = materialMapping(vm.surfaceStyle)
+        let controls = controlMapping(vm.controlStyle)
+        let animation = animationMapping(vm.animationStyle)
+        let navPattern = navigationPattern(vm.navigationStyle)
+
+        let tokens: [String: Any] = [
+            "$schema": "claude-forge/design-tokens-v1",
+            "project": [
+                "name": vm.projectName,
+                "platforms": vm.selectedPlatformNames
+            ],
+            "preset": [
+                "name": vm.themePreset.rawValue,
+                "mood": vm.moodStyle.rawValue
+            ],
+            "colors": [
+                "palette": vm.colorPalette.rawValue,
+                "swatches": [
+                    "background": safe(0),
+                    "surface":    safe(1),
+                    "accent":     safe(2),
+                    "onAccent":   safe(3),
+                    "text":       safe(4)
+                ]
+            ],
+            "typography": [
+                "style": vm.typographyStyle.rawValue,
+                "fontFamily": "-apple-system",
+                "scale": [
+                    "title":    typography.title,
+                    "subtitle": typography.subtitle,
+                    "body":     typography.body,
+                    "caption":  typography.caption
+                ]
+            ],
+            "spacing": [
+                "density": vm.densityStyle.rawValue,
+                "scale": [
+                    "xs": spacing.xs, "sm": spacing.sm, "md": spacing.md,
+                    "lg": spacing.lg, "xl": spacing.xl
+                ]
+            ],
+            "materials": [
+                "surface":   vm.surfaceStyle.rawValue,
+                "primary":   materials.primary,
+                "secondary": materials.secondary
+            ],
+            "controls": [
+                "style":        vm.controlStyle.rawValue,
+                "buttonShape":  controls.buttonShape,
+                "toolbarStyle": controls.toolbarStyle
+            ],
+            "navigation": [
+                "style":          vm.navigationStyle.rawValue,
+                "swiftUIPattern": navPattern
+            ],
+            "animation": [
+                "style":           vm.animationStyle.rawValue,
+                "defaultDuration": animation.duration,
+                "spring": [
+                    "response":        animation.duration,
+                    "dampingFraction": animation.damping
+                ]
+            ],
+            "menu": [
+                "style": vm.menuChromeStyle.rawValue
+            ]
+        ]
+
+        guard let data = try? JSONSerialization.data(
+            withJSONObject: tokens,
+            options: [.prettyPrinted, .sortedKeys]
+        ), let json = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+        return json
+    }
+
+    private func typographyScale(_ style: TypographyStyle) -> (title: Int, subtitle: Int, body: Int, caption: Int) {
+        switch style {
+        case .systemBalanced:    return (22, 15, 13, 11)
+        case .largeProductivity: return (26, 17, 14, 12)
+        case .compactUtility:    return (18, 13, 11, 10)
+        case .editorial:         return (28, 18, 14, 11)
+        }
+    }
+
+    private func spacingScale(_ density: DensityStyle) -> (xs: Int, sm: Int, md: Int, lg: Int, xl: Int) {
+        switch density {
+        case .airy:     return (6, 12, 20, 32, 48)
+        case .balanced: return (4,  8, 14, 22, 32)
+        case .compact:  return (2,  6, 10, 16, 24)
+        }
+    }
+
+    private func materialMapping(_ style: SurfaceStyle) -> (primary: String, secondary: String) {
+        switch style {
+        case .standardMaterial: return ("regularMaterial",  "thinMaterial")
+        case .layeredGlass:     return ("thickMaterial",    "regularMaterial")
+        case .cardStacks:       return ("regularMaterial",  "thinMaterial")
+        case .flatPanels:       return ("ultraThinMaterial","ultraThinMaterial")
+        }
+    }
+
+    private func controlMapping(_ style: ControlStyle) -> (buttonShape: String, toolbarStyle: String) {
+        switch style {
+        case .nativeFilled:   return ("capsule",      "unified")
+        case .tintedToolbar:  return ("roundedRect",  "unifiedCompact")
+        case .softGlass:      return ("capsule",      "unified")
+        case .outlineMinimal: return ("roundedRect",  "expanded")
+        }
+    }
+
+    private func navigationPattern(_ style: NavigationStyle) -> String {
+        switch style {
+        case .sidebar:        return "NavigationSplitView(sidebar:detail:)"
+        case .splitInspector: return "NavigationSplitView(sidebar:content:detail:)"
+        case .tabSidebar:     return "NavigationSplitView + TabView"
+        case .utility:        return "WindowGroup single-view utility"
+        }
+    }
+
+    private func animationMapping(_ style: AnimationStyle) -> (duration: Double, damping: Double) {
+        switch style {
+        case .calm:    return (0.35, 0.90)
+        case .springy: return (0.40, 0.70)
+        case .crisp:   return (0.15, 1.00)
+        case .premium: return (0.25, 0.82)
+        case .minimal: return (0.10, 1.00)
+        }
     }
 }
