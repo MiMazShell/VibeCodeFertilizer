@@ -71,11 +71,3 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 **Why it matters:** _(no rationale captured)_
 
 **Sketch:** _(no sketch captured)_
-
----
-
-## Idea Idea
-
-**Why it matters:** _(no rationale captured)_
-
-**Sketch:** _(no sketch captured)_
