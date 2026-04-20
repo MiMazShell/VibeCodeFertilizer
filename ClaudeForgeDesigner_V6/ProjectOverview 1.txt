@@ -1,0 +1,51 @@
+ProjectOverview 1
+
+This version of ClaudeForgeDesigner is intended to move beyond a simple CLAUDE.md generator and become a fuller Claude Code project-design studio for Apple-platform software planning.
+
+Core direction
+- The app remains Mac-first.
+- It should support projects targeting any combination of macOS, iPhone, and iPad.
+- It should generate a stronger repo-ready instruction system centered on CLAUDE.md plus companion files.
+- It should help users define not only coding rules but also product goals, audience, features, platform intent, and design direction.
+
+Product brief direction
+- The project brief should ask clearer product questions, including goals, key features, target audience, complexity level for version 1, desired polish, and development pace.
+- GitHub details should not dominate the first project-identification step; repo setup belongs later.
+- Multiline narrative fields should offer a helpful refinement affordance so users can make text more concise, clearer, or more specific.
+
+Engineering standards direction
+- Core engineering standards should be treated as defaults rather than optional luxuries.
+- Advanced and custom standards should remain configurable.
+- Nice-to-have or advanced expectations can include accessibility, performance, localization readiness, analytics readiness, security review, CI readiness, and App Store readiness.
+
+Trigger phrase direction
+- More suggested trigger phrases should be included.
+- The exported trigger document should explain what each trigger does and when to use it.
+- Terminal-helper language should also be easy to access so users can ask Claude for exact shell commands and repo-navigation help.
+
+Design Studio direction
+- Design Studio should become more visual and more fun.
+- Selectors should visibly change the live preview so the meaning of each setting is obvious.
+- The app should support richer visual customization options, including navigation style, controls, typography, palette, surface/material style, density, menu chrome, mood, and animation intent.
+- The app should export both text guidance and visual reference artifacts inside design-examples/.
+- The app should keep adding more visible component examples over time so users can immediately understand the consequences of their choices.
+
+Screenshots and images direction
+- The app should create a screenshots folder and explain it as a place for screenshots and images that Claude can use for bug analysis, design inspiration, and feature ideas.
+- Visual references should be treated as first-class context for Claude, not just optional extras.
+
+Repository direction
+- The repository step should always gather GitHub owner information and define the local project folder Claude will use.
+- The repository step should generate clone/setup text and terminal-ready commands.
+- The app should optionally support repo-creation guidance through GitHub token/API flows.
+- SSH and HTTPS remain relevant for clone and push operations.
+- The app should provide a floating helper window or overlay concept that can stay on top while the user is in Terminal or the browser, and that helper should include one-click copy actions for terminal commands.
+
+Review and edit direction
+- There should be a clearer review-and-edit phase before export.
+- Document titles and human-meaningful descriptions should be more prominent than raw filenames.
+- Users should be able to switch between generated files easily and edit each one before final export.
+- The review interface should feel creative and Mac-like, not confusing or overly technical.
+
+Overall product vision
+ClaudeForgeDesigner should feel like the best Mac app for preparing Claude Code to build Apple software. It should combine context engineering, repo setup, prompt systems, design direction, screenshots and images, and polished review/edit workflows into one fun and useful studio.
