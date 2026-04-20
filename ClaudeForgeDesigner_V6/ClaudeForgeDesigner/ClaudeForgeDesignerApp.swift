@@ -14,5 +14,12 @@ struct ClaudeForgeDesignerApp: App {
         .commands {
             CommandGroup(replacing: .newItem) { }
         }
+
+        MenuBarExtra("ClaudeForge", systemImage: "hammer.fill") {
+            HUDView()
+                .environmentObject(viewModel)
+                .frame(width: 380, height: 520)
+        }
+        .menuBarExtraStyle(.window)
     }
 }

@@ -55,6 +55,26 @@ final class WizardViewModel: ObservableObject {
     @Published var includeSearch = true
     @Published var includeCommandPalettePrompt = true
 
+    @Published var hazards: [Hazard] = [
+        Hazard(
+            title: "Xcode project uses hand-assigned pbxproj UUIDs",
+            whyItBites: "New Swift files won't compile if only dropped on disk — the file system has no auto-registration. Agents can silently leave the project in a broken state.",
+            howToHandle: "When adding any new .swift file, update project.pbxproj in four places: PBXBuildFile, PBXFileReference, the relevant PBXGroup children, and PBXSourcesBuildPhase. Use unique hex-24 UUIDs in the existing pattern."
+        ),
+        Hazard(
+            title: "regenerateFiles() preserves previously generated content",
+            whyItBites: "Changes to theme or wizard selections may not propagate to already-viewed generated files. A user who edits a palette still sees the old JSON until content is reset.",
+            howToHandle: "For machine-generated files (.json, .yaml), prefer always-regenerate. Consider a 'Reset to generated' button in the Review step for prose files."
+        ),
+        Hazard(
+            title: "Legacy project names (VibeCodeFertilizer, ClaudeForgeDesigner) persist in paths",
+            whyItBites: "The product is officially ClaudeForge, but folder paths, Xcode targets, and prior docs reference older names. Drifting names can confuse users and agents.",
+            howToHandle: "Use 'ClaudeForge' in user-facing strings and new docs. Tolerate older names in paths without renaming folders mid-flight — rename surgery is a separate deliberate task."
+        )
+    ]
+
+    @Published var bugs: [Bug] = []
+
     @Published var importedScreenshots: [ImportedScreenshot] = []
     @Published var screenshotUsageNotes = "Add screenshots or images of bugs, inspiration apps, layouts, components, or visual ideas. The exported prompts will reference these files so Claude can reason from them."
 
@@ -241,6 +261,48 @@ final class WizardViewModel: ObservableObject {
 
     func removeScreenshot(_ screenshot: ImportedScreenshot) {
         importedScreenshots.removeAll { $0.id == screenshot.id }
+    }
+
+    // MARK: - HUD capture (Session 02)
+
+    func addHazard(title: String, whyItBites: String, howToHandle: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+        hazards.append(Hazard(
+            title: trimmedTitle,
+            whyItBites: whyItBites.trimmingCharacters(in: .whitespacesAndNewlines),
+            howToHandle: howToHandle.trimmingCharacters(in: .whitespacesAndNewlines)
+        ))
+        regenerateFiles()
+    }
+
+    func removeHazard(_ hazard: Hazard) {
+        hazards.removeAll { $0.id == hazard.id }
+        regenerateFiles()
+    }
+
+    func addBug(title: String, symptom: String, suspectedArea: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+        bugs.append(Bug(
+            title: trimmedTitle,
+            symptom: symptom.trimmingCharacters(in: .whitespacesAndNewlines),
+            suspectedArea: suspectedArea.trimmingCharacters(in: .whitespacesAndNewlines)
+        ))
+        regenerateFiles()
+    }
+
+    func removeBug(_ bug: Bug) {
+        bugs.removeAll { $0.id == bug.id }
+        regenerateFiles()
+    }
+
+    func addScreenshotFromURL(_ url: URL, caption: String) {
+        let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = trimmed.isEmpty
+            ? "Reference image captured via ClaudeForge HUD."
+            : trimmed
+        importedScreenshots.append(ImportedScreenshot(sourceURL: url, note: note))
     }
 
     func exportPack() {

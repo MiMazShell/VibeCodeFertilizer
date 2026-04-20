@@ -243,3 +243,27 @@ struct CustomStandard: Identifiable, Hashable {
     var title: String
     var rule: String
 }
+
+struct Hazard: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var whyItBites: String
+    var howToHandle: String
+    var addedDate: Date = Date()
+}
+
+enum BugStatus: String, CaseIterable, Identifiable, Hashable {
+    case open = "Open"
+    case closed = "Closed"
+
+    var id: String { rawValue }
+}
+
+struct Bug: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var symptom: String
+    var suspectedArea: String
+    var addedDate: Date = Date()
+    var status: BugStatus = .open
+}

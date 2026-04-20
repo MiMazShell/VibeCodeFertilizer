@@ -24,6 +24,7 @@
 	B00000000000000000000113 /* RepoStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000043 /* RepoStepView.swift */; };
 	B00000000000000000000114 /* ReviewExportStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* ReviewExportStepView.swift */; };
 	B00000000000000000000117 /* ScreenshotsStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ScreenshotsStepView.swift */; };
+		B00000000000000000000200 /* HUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000120 /* HUDView.swift */; };
 	B00000000000000000000115 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +48,7 @@
 	B00000000000000000000045 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 	B00000000000000000000047 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 	B00000000000000000000048 /* ScreenshotsStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotsStepView.swift; sourceTree = "<group>"; };
+		B00000000000000000000120 /* HUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +123,7 @@
 			B00000000000000000000043 /* RepoStepView.swift */,
 			B00000000000000000000044 /* ReviewExportStepView.swift */,
 			B00000000000000000000048 /* ScreenshotsStepView.swift */,
+			B00000000000000000000120 /* HUDView.swift */,
 		);
 		path = Views;
 		sourceTree = "<group>";
@@ -218,6 +221,7 @@
 			B00000000000000000000113 /* RepoStepView.swift in Sources */,
 			B00000000000000000000114 /* ReviewExportStepView.swift in Sources */,
 			B00000000000000000000117 /* ScreenshotsStepView.swift in Sources */,
+			B00000000000000000000200 /* HUDView.swift in Sources */,
 		);
 		runOnlyForDeploymentPostprocessing = 0;
 	};

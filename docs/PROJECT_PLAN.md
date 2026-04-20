@@ -2,7 +2,7 @@
 
 _Living document. Update at the end of every session as direction changes or work ships._
 
-**Version:** 0.1 · **Last updated:** 2026-04-19 (Session 01)
+**Version:** 0.2 · **Last updated:** 2026-04-19 (Session 02)
 
 ---
 
@@ -22,6 +22,15 @@ ClaudeForge sets the **rhythm of human + AI coding collaboration**. Every artifa
 - a **dance move** — _how_ a specific thing is done (trigger phrases, task templates, conventions, commands, design tokens).
 
 The visual Design Studio is the invitation to the dance. The structured exports are the choreography notes the AI actually reads.
+
+## Product shape (confirmed Session 02)
+
+ClaudeForge has two phases:
+
+1. **Forge** — first-run, small, focused. A simple wizard that scaffolds seed documents for a new project. Runs once, maybe revisited for bigger scope changes.
+2. **HUD** — ongoing. An always-available menu-bar companion that captures (hazards, bugs, ideas, screenshots) and surfaces references (plan, triggers, conventions) without interrupting the AI conversation. **This is the main product.**
+
+The conflict between the original wizard-centric plan and the anti-wizard brief resolves here: they're different phases, not competing visions. The wizard is entry scaffolding; the HUD is where the product actually lives.
 
 ## Core principle: both-sides value
 
@@ -47,29 +56,41 @@ First-run generates **seed documents** — intentionally incomplete, with clear 
 | `prompts/task-templates.txt` | Reusable prompt skeletons | Generated |
 | `design-examples/theme-definition.txt` | Design direction, prose | Generated |
 | `design-examples/ui-rules.txt` | UI rules, prose | Generated |
-| **`design-examples/design-tokens.json`** | **Machine-readable design tokens** | **Shipped Session 01** |
+| `design-examples/design-tokens.json` | Machine-readable design tokens | Shipped Session 01 |
 | `design-examples/*.svg` | Visual reference mocks | Generated |
 | `repo/github-setup.txt` | Clone/setup commands | Generated |
 | `repo/terminal-cheatsheet.txt` | Commands cheatsheet | Generated |
-| `HAZARDS.md` | Things that have burned past agents in this repo | **Not yet built** |
-| `COMMANDS.md` (standalone) | Copy-paste invocations | **Not yet built** |
-| `CONVENTIONS.md` | "How we do things here" | **Not yet built** |
-| Session handoff notes | End-of-session recap | **Not yet built** |
+| **`HAZARDS.md`** | **Non-obvious traps in this repo — read first** | **Shipped Session 02** |
+| **`BUGS.md`** | **Open defects** | **Shipped Session 02** |
+| **HUD — capture (hazard/bug/screenshot)** | **Menu-bar popover for in-flow capture** | **Shipped Session 02** |
+| **HUD — Plan tab** | **Wizard-progress reference view** | **Shipped Session 02** |
+| `COMMANDS.md` (standalone) | Copy-paste invocations | Not yet built |
+| `CONVENTIONS.md` | "How we do things here" | Not yet built |
+| Session handoff notes | End-of-session recap | Not yet built |
+| Ideas capture | HUD 4th type — "bright ideas" backlog | Not yet built |
+| Sync-to-repo action | HUD button: git add/commit/push with animation | Not yet built |
 
 ## Roadmap (ordered)
 
 1. ✅ **Design-tokens.json export** — structured design output agents can execute against
-2. ⬜ **Hazards module** — new wizard step + `HAZARDS.md` output with capture-first tone
-3. ⬜ **Commands module** — `COMMANDS.md` with detected-project-type defaults (xcodebuild, swift test, etc.)
-4. ⬜ **Conventions module** — `CONVENTIONS.md` seed with common Apple-platform pitfalls
-5. ⬜ **Session handoff ritual** — end-of-session summary doc generator, "what did we ship / what's next"
-6. ⬜ **Living-doc sidebar mode** — second app mode: "open existing repo" → drop into maintenance view
-7. ⬜ **Menu-bar quick-capture** — always-accessible hazard/note capture without opening the full app
-8. ⬜ **Floating repo helper panel** — always-on-top window with copy-buttons for terminal commands
-9. ⬜ **Token-based GitHub repo creation** — API flow for creating a repo from within the app
-10. ⬜ **Better Review & Edit UX** — friendly doc titles, easier file switching
-11. ⬜ **Animation presets + richer Design Studio component examples**
-12. ⬜ **Writing-assist integration** — refine narrative fields for clarity/conciseness
+2. ✅ **HUD v0.1** — menu-bar popover with hazard/bug/screenshot capture + Plan reference tab; HAZARDS.md + BUGS.md exports; CLAUDE.md "read first" pointer
+3. ⬜ **HUD v0.2 — sync & persistence** (Session 03 scope):
+   - Target-repo-folder setting (sticky, UserDefaults)
+   - Auto-write on capture (files land in the target repo on-the-fly)
+   - "Sync to Repo" button: git add + commit + push, with animation
+   - Ideas capture (4th type)
+   - CLAUDE.md updated to instruct agents to re-read HAZARDS/BUGS each task
+4. ⬜ **Commands module** — `COMMANDS.md` with detected-project-type defaults
+5. ⬜ **Conventions module** — `CONVENTIONS.md` seed with Apple-platform pitfalls
+6. ⬜ **Trigger phrase management in HUD** — view/create aliases without leaving flow
+7. ⬜ **Session handoff ritual** — end-of-session summary doc generator
+8. ⬜ **Living-doc sidebar mode** — "open existing repo" → drop into maintenance view
+9. ⬜ **Floating repo helper panel** — always-on-top window with copy-buttons
+10. ⬜ **Token-based GitHub repo creation** — API flow from within the app
+11. ⬜ **Repo-access helper** — detect SSH/keychain state, walk through setup (see `SSH access pain point` memory)
+12. ⬜ **Better Review & Edit UX** — friendly doc titles, easier file switching
+13. ⬜ **Animation presets + richer Design Studio component examples**
+14. ⬜ **Writing-assist integration** — refine narrative fields for clarity/conciseness
 
 ## Delivery rules (always apply)
 

@@ -7,6 +7,8 @@ struct TemplateService {
         return [
             GeneratedFile(relativePath: "\(root)/ProjectOverview 1.txt", content: projectOverview(vm: vm), purpose: "A high-level summary of the product direction, planned improvements, and what this project pack is intended to generate."),
             GeneratedFile(relativePath: "\(root)/CLAUDE.md", content: baseClaude(vm: vm), purpose: "The main repository instruction file Claude Code should read first before making plans or edits."),
+            GeneratedFile(relativePath: "\(root)/HAZARDS.md", content: hazardsMarkdown(vm: vm), purpose: "Non-obvious traps in this repo that have burned past agents. Read before any non-trivial task. Updated via the ClaudeForge HUD."),
+            GeneratedFile(relativePath: "\(root)/BUGS.md", content: bugsMarkdown(vm: vm), purpose: "Known open defects in the project, captured from the ClaudeForge HUD. Distinct from hazards (ongoing traps) and ideas (future possibilities)."),
             GeneratedFile(relativePath: "\(root)/planning/project-brief.txt", content: projectBrief(vm: vm), purpose: "The core product brief: goals, audience, version 1 scope, platform mix, and success criteria."),
             GeneratedFile(relativePath: "\(root)/planning/architecture-guidelines.txt", content: architectureGuidelines(vm: vm), purpose: "Architecture boundaries, code organization expectations, and how the project should scale safely."),
             GeneratedFile(relativePath: "\(root)/planning/acceptance-criteria.txt", content: acceptanceCriteria(vm: vm), purpose: "A practical checklist Claude can use before calling work complete."),
@@ -81,6 +83,10 @@ struct TemplateService {
 
         return """
 # CLAUDE.md
+
+## Read first
+- **HAZARDS.md** — non-obvious traps in this repo. Read before any non-trivial task; avoiding what has bitten previous agents is cheaper than re-discovering it.
+- **BUGS.md** — specific open defects. If you are about to work in an area listed here, prioritize the fix or coordinate with the user.
 
 ## Project identity
 - Project name: \(vm.projectName)
@@ -688,6 +694,82 @@ How to use it
   <text x='530' y='356' font-size='14' fill='#444444'>Surface: \(vm.surfaceStyle.rawValue)</text>
 </svg>
 """
+    }
+
+    // MARK: - Hazards and bugs
+
+    private func hazardsMarkdown(vm: WizardViewModel) -> String {
+        let intro = """
+# HAZARDS
+
+_Read this file FIRST._
+
+Hazards are non-obvious traps in this repo — things that look fine but are secretly wrong, surprising constraints, and dangerous patterns. An AI agent working on this project should read this before starting any non-trivial task to avoid re-discovering the same traps.
+
+Each entry has three parts:
+- **What** — the surprising fact (the title below)
+- **Why it bites** — the consequence, with context
+- **How to handle** — the safe path
+
+Capture new hazards from the ClaudeForge menu-bar HUD the moment you find them. The file compounds in value as real issues get recorded.
+
+---
+
+"""
+
+        if vm.hazards.isEmpty {
+            return intro + "_No hazards captured yet. Log your first one from the ClaudeForge HUD (menu bar → hammer icon → Capture → Hazard)._\n"
+        }
+
+        let entries = vm.hazards.map { hazard -> String in
+            let why = hazard.whyItBites.isEmpty ? "_(no explanation captured)_" : hazard.whyItBites
+            let how = hazard.howToHandle.isEmpty ? "_(no handling guidance captured)_" : hazard.howToHandle
+            return """
+## \(hazard.title)
+
+**Why it bites:** \(why)
+
+**How to handle:** \(how)
+"""
+        }.joined(separator: "\n\n---\n\n")
+
+        return intro + entries + "\n"
+    }
+
+    private func bugsMarkdown(vm: WizardViewModel) -> String {
+        let intro = """
+# BUGS
+
+Open defects in the project. Bugs are specific issues to fix — different from hazards (ongoing traps) and ideas (speculative additions).
+
+Each entry has:
+- **Symptom** — what's observably wrong
+- **Suspected area** — where it likely lives in the code
+
+Capture bugs from the ClaudeForge menu-bar HUD when you hit one.
+
+---
+
+"""
+
+        let openBugs = vm.bugs.filter { $0.status == .open }
+        if openBugs.isEmpty {
+            return intro + "_No open bugs tracked._\n"
+        }
+
+        let entries = openBugs.map { bug -> String in
+            let symptom = bug.symptom.isEmpty ? "_(no symptom captured)_" : bug.symptom
+            let area = bug.suspectedArea.isEmpty ? "_(unspecified)_" : bug.suspectedArea
+            return """
+## \(bug.title)
+
+**Symptom:** \(symptom)
+
+**Suspected area:** \(area)
+"""
+        }.joined(separator: "\n\n---\n\n")
+
+        return intro + entries + "\n"
     }
 
     // MARK: - Design tokens (machine-readable)
