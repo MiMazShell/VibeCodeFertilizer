@@ -39,3 +39,11 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 **Why it matters:** Ideas matter, you matter
 
 **Sketch:** Matter has weight and takes up space
+
+---
+
+## Ideas are the poops of the brain
+
+**Why it matters:** Pooping is key to life. Desruction clears way for growth
+
+**Sketch:** Ideas falling out of my head
