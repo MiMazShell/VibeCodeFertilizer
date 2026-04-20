@@ -6,17 +6,20 @@ import UniformTypeIdentifiers
 struct HUDView: View {
     @EnvironmentObject private var viewModel: WizardViewModel
     @State private var selectedTab: HUDTab = .capture
+    @State private var showingSettings = false
+    @State private var showingRestoreSheet = false
 
     enum HUDTab: String, CaseIterable, Identifiable {
         case capture = "Capture"
         case plan = "Plan"
+        case archive = "Archive"
 
         var id: String { rawValue }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            HUDHeader()
+            HUDHeader(showingSettings: $showingSettings)
 
             Picker("", selection: $selectedTab) {
                 ForEach(HUDTab.allCases) { tab in
@@ -38,32 +41,152 @@ struct HUDView: View {
                         HUDCaptureView()
                     case .plan:
                         HUDPlanView()
+                    case .archive:
+                        HUDArchiveView()
                     }
                 }
                 .padding(12)
             }
         }
+        .sheet(isPresented: $showingSettings) {
+            HUDSettingsSheet()
+                .environmentObject(viewModel)
+        }
+        .onAppear {
+            // Absorb any blocks the repo's capture files hold that aren't in the
+            // in-memory list yet (e.g., added manually, by an AI agent, or captured
+            // in a previous session before we had any startup sync).
+            viewModel.refreshFromRepoIfTargetSet()
+        }
     }
 }
 
+// MARK: - Header (pending indicator + sync + settings)
+
 private struct HUDHeader: View {
+    @EnvironmentObject private var viewModel: WizardViewModel
+    @Binding var showingSettings: Bool
+    @State private var syncIconRotation: Double = 0
+    @State private var justSyncedFlash = false
+    // Timer-driven rotation is used instead of a repeatForever SwiftUI animation
+    // because repeatForever does not cleanly stop when the driving state flips off.
+    @State private var rotationTimer: Timer?
+
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "hammer.fill")
-                .foregroundStyle(.orange)
-            Text("ClaudeForge")
-                .font(.headline)
-            Spacer()
-            Text("HUD")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.secondary.opacity(0.15), in: Capsule())
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Image(systemName: iconName)
+                    .foregroundStyle(iconColor)
+                    .rotationEffect(.degrees(syncIconRotation))
+                    .scaleEffect(justSyncedFlash ? 1.25 : 1.0)
+                    .animation(.easeInOut(duration: 0.35), value: justSyncedFlash)
+                    .onChange(of: viewModel.isSyncing) { _, syncing in
+                        if syncing {
+                            startSpin()
+                        } else {
+                            stopSpin()
+                            justSyncedFlash = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                withAnimation(.easeOut(duration: 0.35)) {
+                                    justSyncedFlash = false
+                                }
+                            }
+                        }
+                    }
+                    .onDisappear { stopSpin() }
+
+                Text("ClaudeForge")
+                    .font(.headline)
+
+                if viewModel.pendingTotalCount > 0 {
+                    PendingBadge(count: viewModel.pendingTotalCount)
+                }
+
+                Spacer()
+
+                Button {
+                    viewModel.syncToRepo()
+                } label: {
+                    Label(viewModel.isSyncing ? "Syncing…" : "Sync", systemImage: "arrow.triangle.2.circlepath")
+                        .labelStyle(.titleAndIcon)
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(viewModel.isSyncing || viewModel.targetRepoURL == nil)
+
+                Button {
+                    showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .help("HUD settings")
+            }
+
+            if viewModel.targetRepoURL == nil {
+                Text("No target repo set — captures live in app only. Open settings to point at a repo.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            } else if !viewModel.lastSyncMessage.isEmpty {
+                Text(viewModel.lastSyncMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            } else if let failure = viewModel.syncFailure {
+                Text(failure)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .lineLimit(3)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.top, 10)
         .padding(.bottom, 4)
+    }
+
+    private var iconName: String {
+        if viewModel.isSyncing { return "gearshape.2.fill" }
+        if justSyncedFlash     { return "checkmark.seal.fill" }
+        return "hammer.fill"
+    }
+
+    private var iconColor: Color {
+        if viewModel.isSyncing { return .accentColor }
+        if justSyncedFlash     { return .green }
+        return .orange
+    }
+
+    private func startSpin() {
+        rotationTimer?.invalidate()
+        let step = 6.0 // degrees per tick (360° / 60 ticks = 1s per revolution)
+        rotationTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { _ in
+            syncIconRotation = (syncIconRotation + step).truncatingRemainder(dividingBy: 360)
+        }
+    }
+
+    private func stopSpin() {
+        rotationTimer?.invalidate()
+        rotationTimer = nil
+        syncIconRotation = 0
+    }
+}
+
+private struct PendingBadge: View {
+    let count: Int
+    var body: some View {
+        HStack(spacing: 3) {
+            Circle()
+                .fill(Color.orange)
+                .frame(width: 6, height: 6)
+            Text("\(count) unsynced")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.orange)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Color.orange.opacity(0.12), in: Capsule())
     }
 }
 
@@ -76,7 +199,8 @@ private struct HUDCaptureView: View {
     enum CaptureType: String, CaseIterable, Identifiable {
         case hazard = "Hazard"
         case bug = "Bug"
-        case screenshot = "Screenshot"
+        case idea = "Idea"
+        case screenshot = "Shot"
 
         var id: String { rawValue }
     }
@@ -96,6 +220,8 @@ private struct HUDCaptureView: View {
                 HazardCaptureForm()
             case .bug:
                 BugCaptureForm()
+            case .idea:
+                IdeaCaptureForm()
             case .screenshot:
                 ScreenshotCaptureForm()
             }
@@ -157,7 +283,7 @@ private struct HazardCaptureForm: View {
                 Text("Current hazards (\(viewModel.hazards.count))")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(viewModel.hazards) { hazard in
+                ForEach(Array(viewModel.hazards.reversed())) { hazard in
                     HazardRow(hazard: hazard) {
                         viewModel.removeHazard(hazard)
                     }
@@ -197,7 +323,28 @@ private struct HazardRow: View {
             .controlSize(.small)
         }
         .padding(8)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+        .background(CaptureRowStyle.background(for: hazard.syncState), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(CaptureRowStyle.strokeColor(for: hazard.syncState), lineWidth: 1)
+                .allowsHitTesting(false)
+        )
+    }
+}
+
+enum CaptureRowStyle {
+    static func background(for state: SyncState) -> Color {
+        switch state {
+        case .pending: return Color.orange.opacity(0.12)
+        case .synced:  return Color.blue.opacity(0.08)
+        }
+    }
+
+    static func strokeColor(for state: SyncState) -> Color {
+        switch state {
+        case .pending: return Color.orange.opacity(0.30)
+        case .synced:  return Color.blue.opacity(0.25)
+        }
     }
 }
 
@@ -254,7 +401,7 @@ private struct BugCaptureForm: View {
                 Text("Open bugs (\(viewModel.bugs.filter { $0.status == .open }.count))")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(viewModel.bugs) { bug in
+                ForEach(Array(viewModel.bugs.reversed())) { bug in
                     BugRow(bug: bug) {
                         viewModel.removeBug(bug)
                     }
@@ -294,7 +441,115 @@ private struct BugRow: View {
             .controlSize(.small)
         }
         .padding(8)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+        .background(CaptureRowStyle.background(for: bug.syncState), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(CaptureRowStyle.strokeColor(for: bug.syncState), lineWidth: 1)
+                .allowsHitTesting(false)
+        )
+    }
+}
+
+// MARK: - Idea capture
+
+private struct IdeaCaptureForm: View {
+    @EnvironmentObject private var viewModel: WizardViewModel
+    @State private var title = ""
+    @State private var why = ""
+    @State private var sketch = ""
+    @State private var justAdded = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Log a bright idea — speculative, not yet committed scope.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            TextField("Title (short description)", text: $title)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("Why it matters (the user problem or value)", text: $why, axis: .vertical)
+                .lineLimit(2...4)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("Sketch (one-line shape of what it might look like)", text: $sketch, axis: .vertical)
+                .lineLimit(2...4)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button {
+                    viewModel.addIdea(title: title, whyItMatters: why, sketch: sketch)
+                    justAdded = title
+                    title = ""
+                    why = ""
+                    sketch = ""
+                } label: {
+                    Label("Log Idea", systemImage: "lightbulb.fill")
+                }
+                .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                .keyboardShortcut(.return, modifiers: [.command])
+                .buttonStyle(.borderedProminent)
+
+                Spacer()
+
+                if !justAdded.isEmpty {
+                    Label("Saved", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+            }
+
+            if !viewModel.ideas.isEmpty {
+                Divider().padding(.vertical, 4)
+                Text("Current ideas (\(viewModel.ideas.count))")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(Array(viewModel.ideas.reversed())) { idea in
+                    IdeaRow(idea: idea) {
+                        viewModel.removeIdea(idea)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct IdeaRow: View {
+    let idea: Idea
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "lightbulb.fill")
+                .foregroundStyle(.yellow)
+                .font(.caption)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(idea.title)
+                    .font(.callout.weight(.medium))
+                    .lineLimit(2)
+                if !idea.whyItMatters.isEmpty {
+                    Text(idea.whyItMatters)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                }
+            }
+            Spacer(minLength: 4)
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+        }
+        .padding(8)
+        .background(CaptureRowStyle.background(for: idea.syncState), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(CaptureRowStyle.strokeColor(for: idea.syncState), lineWidth: 1)
+                .allowsHitTesting(false)
+        )
     }
 }
 
@@ -368,7 +623,7 @@ private struct ScreenshotCaptureForm: View {
     private func handleDrop(providers: [NSItemProvider]) -> Bool {
         guard let provider = providers.first else { return false }
 
-        _ = provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
             var resolvedURL: URL?
             if let url = item as? URL {
                 resolvedURL = url
@@ -441,5 +696,218 @@ private struct PlanStepRow: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Archive tab (git history → removed captures)
+
+private struct HUDArchiveView: View {
+    @EnvironmentObject private var viewModel: WizardViewModel
+    @State private var removed: [RemovedCaptureBlock] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Removed captures")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    loadHistory()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                        .font(.caption2)
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .disabled(viewModel.targetRepoURL == nil || isLoading)
+            }
+
+            if viewModel.targetRepoURL == nil {
+                Text("Set a target repo in settings to see history.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if isLoading {
+                ProgressView("Reading git history…")
+                    .controlSize(.small)
+            } else if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else if removed.isEmpty {
+                Text("No removed captures found in git history yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(removed) { block in
+                    RemovedBlockRow(block: block) {
+                        viewModel.restoreRemovedBlock(block)
+                        // Refresh so the restored block drops out of the list.
+                        loadHistory()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            if viewModel.targetRepoURL != nil && removed.isEmpty && errorMessage == nil {
+                loadHistory()
+            }
+        }
+    }
+
+    private func loadHistory() {
+        guard let root = viewModel.targetRepoURL else { return }
+        isLoading = true
+        errorMessage = nil
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let blocks = try RepoSyncService.fetchRemovedBlocks(targetRoot: root)
+                DispatchQueue.main.async {
+                    removed = blocks
+                    isLoading = false
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    errorMessage = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+private struct RemovedBlockRow: View {
+    let block: RemovedCaptureBlock
+    let onRestore: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: iconName)
+                .foregroundStyle(.secondary)
+                .font(.caption)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(block.title)
+                    .font(.callout.weight(.medium))
+                    .lineLimit(2)
+                Text("\(block.file) · commit \(block.commit)\(dateSuffix)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            Button {
+                onRestore()
+            } label: {
+                Label("Restore", systemImage: "arrow.uturn.backward")
+                    .font(.caption2)
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+        }
+        .padding(8)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var iconName: String {
+        switch block.file {
+        case "HAZARDS.md": return "exclamationmark.triangle"
+        case "BUGS.md":    return "ant"
+        case "IDEAS.md":   return "lightbulb"
+        default:           return "doc.text"
+        }
+    }
+
+    private var dateSuffix: String {
+        guard let d = block.removedAt else { return "" }
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        return " · \(df.string(from: d))"
+    }
+}
+
+// MARK: - Settings sheet
+
+private struct HUDSettingsSheet: View {
+    @EnvironmentObject private var viewModel: WizardViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("HUD Settings")
+                    .font(.title3.weight(.semibold))
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Target Repo Folder")
+                    .font(.callout.weight(.semibold))
+
+                Text("Captures from the HUD are written to HAZARDS.md / BUGS.md / IDEAS.md in this folder. The Sync button runs git add / commit / push here.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "folder.fill")
+                        .foregroundStyle(viewModel.targetRepoURL == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+                    Text(viewModel.targetRepoURL?.path ?? "No target repo set")
+                        .font(.caption)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                    Spacer()
+                }
+                .padding(8)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+
+                HStack {
+                    Button {
+                        viewModel.chooseTargetRepo()
+                    } label: {
+                        Label(viewModel.targetRepoURL == nil ? "Choose Folder…" : "Change Folder…", systemImage: "folder.badge.plus")
+                    }
+                    if viewModel.targetRepoURL != nil {
+                        Button(role: .destructive) {
+                            viewModel.clearTargetRepo()
+                        } label: {
+                            Text("Clear")
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Last Sync")
+                    .font(.callout.weight(.semibold))
+                if viewModel.lastSyncMessage.isEmpty && viewModel.syncFailure == nil {
+                    Text("No sync yet this session.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if !viewModel.lastSyncMessage.isEmpty {
+                    Text(viewModel.lastSyncMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let failure = viewModel.syncFailure {
+                    Text(failure)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(width: 420, height: 340)
     }
 }

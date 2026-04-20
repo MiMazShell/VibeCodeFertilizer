@@ -9,6 +9,7 @@ struct TemplateService {
             GeneratedFile(relativePath: "\(root)/CLAUDE.md", content: baseClaude(vm: vm), purpose: "The main repository instruction file Claude Code should read first before making plans or edits."),
             GeneratedFile(relativePath: "\(root)/HAZARDS.md", content: hazardsMarkdown(vm: vm), purpose: "Non-obvious traps in this repo that have burned past agents. Read before any non-trivial task. Updated via the ClaudeForge HUD."),
             GeneratedFile(relativePath: "\(root)/BUGS.md", content: bugsMarkdown(vm: vm), purpose: "Known open defects in the project, captured from the ClaudeForge HUD. Distinct from hazards (ongoing traps) and ideas (future possibilities)."),
+            GeneratedFile(relativePath: "\(root)/IDEAS.md", content: ideasMarkdown(vm: vm), purpose: "Speculative additions and bright ideas for the project. Distinct from bugs (things to fix) and hazards (traps to avoid). Captured via the ClaudeForge HUD."),
             GeneratedFile(relativePath: "\(root)/planning/project-brief.txt", content: projectBrief(vm: vm), purpose: "The core product brief: goals, audience, version 1 scope, platform mix, and success criteria."),
             GeneratedFile(relativePath: "\(root)/planning/architecture-guidelines.txt", content: architectureGuidelines(vm: vm), purpose: "Architecture boundaries, code organization expectations, and how the project should scale safely."),
             GeneratedFile(relativePath: "\(root)/planning/acceptance-criteria.txt", content: acceptanceCriteria(vm: vm), purpose: "A practical checklist Claude can use before calling work complete."),
@@ -84,9 +85,10 @@ struct TemplateService {
         return """
 # CLAUDE.md
 
-## Read first
-- **HAZARDS.md** — non-obvious traps in this repo. Read before any non-trivial task; avoiding what has bitten previous agents is cheaper than re-discovering it.
+## Read first (re-read each session, and before any non-trivial task)
+- **HAZARDS.md** — non-obvious traps in this repo. Re-read before any non-trivial task; it grows as real issues are captured, and skipping it costs more than reading it. When you discover a new trap, ask the user to capture it from the ClaudeForge HUD so future agents get the benefit.
 - **BUGS.md** — specific open defects. If you are about to work in an area listed here, prioritize the fix or coordinate with the user.
+- **IDEAS.md** — speculative additions and bright ideas not yet on the plan. Consult when scoping new work so you can flag adjacent ideas, but do not treat as committed scope without explicit user direction.
 
 ## Project identity
 - Project name: \(vm.projectName)
@@ -696,15 +698,15 @@ How to use it
 """
     }
 
-    // MARK: - Hazards and bugs
+    // MARK: - Hazards, bugs, and ideas
 
-    private func hazardsMarkdown(vm: WizardViewModel) -> String {
-        let intro = """
+    static func hazardsIntro() -> String {
+        """
 # HAZARDS
 
-_Read this file FIRST._
+_Read this file FIRST, and re-read it before any non-trivial task._
 
-Hazards are non-obvious traps in this repo — things that look fine but are secretly wrong, surprising constraints, and dangerous patterns. An AI agent working on this project should read this before starting any non-trivial task to avoid re-discovering the same traps.
+Hazards are non-obvious traps in this repo — things that look fine but are secretly wrong, surprising constraints, and dangerous patterns. An AI agent working on this project should read this file at the start of every session and skim it again before touching a new area, to avoid re-discovering the same traps.
 
 Each entry has three parts:
 - **What** — the surprising fact (the title below)
@@ -712,32 +714,11 @@ Each entry has three parts:
 - **How to handle** — the safe path
 
 Capture new hazards from the ClaudeForge menu-bar HUD the moment you find them. The file compounds in value as real issues get recorded.
-
----
-
 """
-
-        if vm.hazards.isEmpty {
-            return intro + "_No hazards captured yet. Log your first one from the ClaudeForge HUD (menu bar → hammer icon → Capture → Hazard)._\n"
-        }
-
-        let entries = vm.hazards.map { hazard -> String in
-            let why = hazard.whyItBites.isEmpty ? "_(no explanation captured)_" : hazard.whyItBites
-            let how = hazard.howToHandle.isEmpty ? "_(no handling guidance captured)_" : hazard.howToHandle
-            return """
-## \(hazard.title)
-
-**Why it bites:** \(why)
-
-**How to handle:** \(how)
-"""
-        }.joined(separator: "\n\n---\n\n")
-
-        return intro + entries + "\n"
     }
 
-    private func bugsMarkdown(vm: WizardViewModel) -> String {
-        let intro = """
+    static func bugsIntro() -> String {
+        """
 # BUGS
 
 Open defects in the project. Bugs are specific issues to fix — different from hazards (ongoing traps) and ideas (speculative additions).
@@ -747,29 +728,49 @@ Each entry has:
 - **Suspected area** — where it likely lives in the code
 
 Capture bugs from the ClaudeForge menu-bar HUD when you hit one.
-
----
-
 """
+    }
 
+    static func ideasIntro() -> String {
+        """
+# IDEAS
+
+Bright ideas and speculative additions for the project. Distinct from bugs (things to fix) and hazards (traps to avoid) — ideas are "this might be worth building."
+
+Each entry has:
+- **Why it matters** — the value or user problem behind the idea
+- **Sketch** — a one-line shape of what it might look like
+
+Capture ideas from the ClaudeForge HUD as they come up. Agents should read this when scoping new work to flag relevant adjacencies, but nothing here is committed scope until the user says so.
+"""
+    }
+
+    private func hazardsMarkdown(vm: WizardViewModel) -> String {
+        let intro = TemplateService.hazardsIntro()
+        if vm.hazards.isEmpty {
+            return intro + "\n\n_No hazards captured yet. Log your first one from the ClaudeForge HUD (menu bar → hammer icon → Capture → Hazard)._\n"
+        }
+        let blocks = vm.hazards.map(CaptureMarkdown.renderHazardBlock)
+        return CaptureMarkdown.composeFile(intro: intro, blocks: blocks)
+    }
+
+    private func bugsMarkdown(vm: WizardViewModel) -> String {
+        let intro = TemplateService.bugsIntro()
         let openBugs = vm.bugs.filter { $0.status == .open }
         if openBugs.isEmpty {
-            return intro + "_No open bugs tracked._\n"
+            return intro + "\n\n_No open bugs tracked._\n"
         }
+        let blocks = openBugs.map(CaptureMarkdown.renderBugBlock)
+        return CaptureMarkdown.composeFile(intro: intro, blocks: blocks)
+    }
 
-        let entries = openBugs.map { bug -> String in
-            let symptom = bug.symptom.isEmpty ? "_(no symptom captured)_" : bug.symptom
-            let area = bug.suspectedArea.isEmpty ? "_(unspecified)_" : bug.suspectedArea
-            return """
-## \(bug.title)
-
-**Symptom:** \(symptom)
-
-**Suspected area:** \(area)
-"""
-        }.joined(separator: "\n\n---\n\n")
-
-        return intro + entries + "\n"
+    private func ideasMarkdown(vm: WizardViewModel) -> String {
+        let intro = TemplateService.ideasIntro()
+        if vm.ideas.isEmpty {
+            return intro + "\n\n_No ideas captured yet. Log one from the ClaudeForge HUD when inspiration hits._\n"
+        }
+        let blocks = vm.ideas.map(CaptureMarkdown.renderIdeaBlock)
+        return CaptureMarkdown.composeFile(intro: intro, blocks: blocks)
     }
 
     // MARK: - Design tokens (machine-readable)

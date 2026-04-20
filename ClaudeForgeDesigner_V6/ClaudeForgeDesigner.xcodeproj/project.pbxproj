@@ -25,6 +25,8 @@
 	B00000000000000000000114 /* ReviewExportStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* ReviewExportStepView.swift */; };
 	B00000000000000000000117 /* ScreenshotsStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ScreenshotsStepView.swift */; };
 		B00000000000000000000200 /* HUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000120 /* HUDView.swift */; };
+		B00000000000000000000201 /* CaptureMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000121 /* CaptureMarkdown.swift */; };
+		B00000000000000000000202 /* RepoSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000122 /* RepoSyncService.swift */; };
 	B00000000000000000000115 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -49,6 +51,8 @@
 	B00000000000000000000047 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 	B00000000000000000000048 /* ScreenshotsStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotsStepView.swift; sourceTree = "<group>"; };
 		B00000000000000000000120 /* HUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDView.swift; sourceTree = "<group>"; };
+		B00000000000000000000121 /* CaptureMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMarkdown.swift; sourceTree = "<group>"; };
+		B00000000000000000000122 /* RepoSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepoSyncService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +110,8 @@
 		children = (
 			B00000000000000000000034 /* TemplateService.swift */,
 			B00000000000000000000035 /* ExportService.swift */,
+			B00000000000000000000121 /* CaptureMarkdown.swift */,
+			B00000000000000000000122 /* RepoSyncService.swift */,
 		);
 		path = Services;
 		sourceTree = "<group>";
@@ -222,6 +228,8 @@
 			B00000000000000000000114 /* ReviewExportStepView.swift in Sources */,
 			B00000000000000000000117 /* ScreenshotsStepView.swift in Sources */,
 			B00000000000000000000200 /* HUDView.swift in Sources */,
+			B00000000000000000000201 /* CaptureMarkdown.swift in Sources */,
+			B00000000000000000000202 /* RepoSyncService.swift in Sources */,
 		);
 		runOnlyForDeploymentPostprocessing = 0;
 	};

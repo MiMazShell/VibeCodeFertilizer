@@ -2,7 +2,7 @@
 
 _Living document. Update at the end of every session as direction changes or work ships._
 
-**Version:** 0.2 · **Last updated:** 2026-04-19 (Session 02)
+**Version:** 0.3 · **Last updated:** 2026-04-20 (Session 03)
 
 ---
 
@@ -62,24 +62,32 @@ First-run generates **seed documents** — intentionally incomplete, with clear 
 | `repo/terminal-cheatsheet.txt` | Commands cheatsheet | Generated |
 | **`HAZARDS.md`** | **Non-obvious traps in this repo — read first** | **Shipped Session 02** |
 | **`BUGS.md`** | **Open defects** | **Shipped Session 02** |
-| **HUD — capture (hazard/bug/screenshot)** | **Menu-bar popover for in-flow capture** | **Shipped Session 02** |
+| **HUD — capture (hazard/bug/idea/screenshot)** | **Menu-bar popover for in-flow capture** | **Hazard/Bug/Screenshot: Session 02; Idea: Session 03** |
 | **HUD — Plan tab** | **Wizard-progress reference view** | **Shipped Session 02** |
+| **`IDEAS.md`** | **Bright-ideas backlog, sibling to HAZARDS.md/BUGS.md** | **Shipped Session 03** |
+| **Target repo folder setting** | **UserDefaults-backed path; wizard export + HUD settings both set it** | **Shipped Session 03** |
+| **Auto-write on capture** | **Read-merge-write into HAZARDS/BUGS/IDEAS.md in target repo on every capture** | **Shipped Session 03** |
+| **Pending indicator** | **Amber badge + per-row dot for unsynced captures** | **Shipped Session 03** |
+| **Sync-to-repo action** | **HUD button: git add/commit/push with rotating-icon animation** | **Shipped Session 03** |
+| **Archive / History tab** | **Parses git log → lists removed blocks with Restore action** | **Shipped Session 03** |
+| **HUD Settings sheet** | **Target-repo picker, last-sync status, clear** | **Shipped Session 03** |
 | `COMMANDS.md` (standalone) | Copy-paste invocations | Not yet built |
 | `CONVENTIONS.md` | "How we do things here" | Not yet built |
 | Session handoff notes | End-of-session recap | Not yet built |
-| Ideas capture | HUD 4th type — "bright ideas" backlog | Not yet built |
-| Sync-to-repo action | HUD button: git add/commit/push with animation | Not yet built |
+| Menu-bar badge count | Show pending count on the menu-bar hammer icon itself | Not yet built (HUD header shows it) |
 
 ## Roadmap (ordered)
 
 1. ✅ **Design-tokens.json export** — structured design output agents can execute against
 2. ✅ **HUD v0.1** — menu-bar popover with hazard/bug/screenshot capture + Plan reference tab; HAZARDS.md + BUGS.md exports; CLAUDE.md "read first" pointer
-3. ⬜ **HUD v0.2 — sync & persistence** (Session 03 scope):
-   - Target-repo-folder setting (sticky, UserDefaults)
-   - Auto-write on capture (files land in the target repo on-the-fly)
-   - "Sync to Repo" button: git add + commit + push, with animation
-   - Ideas capture (4th type)
-   - CLAUDE.md updated to instruct agents to re-read HAZARDS/BUGS each task
+3. ✅ **HUD v0.2 — sync & persistence** (Session 03):
+   - ✅ Target-repo-folder setting (UserDefaults, sticky + explicit HUD picker)
+   - ✅ Auto-write on capture (read-merge-write to HAZARDS/BUGS/IDEAS.md)
+   - ✅ "Sync to Repo" button: git add + commit + push (terse summary commit format)
+   - ✅ Sync animation (rotating-gear icon → green check flash)
+   - ✅ Ideas capture (4th type) + `IDEAS.md` export
+   - ✅ CLAUDE.md "Read first" updated to include IDEAS.md + "re-read each session, and before any non-trivial task"
+   - ✅ Archive/History tab: parses `git log` → lists removed blocks with Restore action
 4. ⬜ **Commands module** — `COMMANDS.md` with detected-project-type defaults
 5. ⬜ **Conventions module** — `CONVENTIONS.md` seed with Apple-platform pitfalls
 6. ⬜ **Trigger phrase management in HUD** — view/create aliases without leaving flow

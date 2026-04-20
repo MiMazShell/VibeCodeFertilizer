@@ -244,12 +244,18 @@ struct CustomStandard: Identifiable, Hashable {
     var rule: String
 }
 
+enum SyncState: String, Hashable {
+    case pending   // captured locally, not yet committed to the target repo
+    case synced    // confirmed in the target repo's committed HEAD
+}
+
 struct Hazard: Identifiable, Hashable {
     let id = UUID()
     var title: String
     var whyItBites: String
     var howToHandle: String
     var addedDate: Date = Date()
+    var syncState: SyncState = .pending
 }
 
 enum BugStatus: String, CaseIterable, Identifiable, Hashable {
@@ -266,4 +272,14 @@ struct Bug: Identifiable, Hashable {
     var suspectedArea: String
     var addedDate: Date = Date()
     var status: BugStatus = .open
+    var syncState: SyncState = .pending
+}
+
+struct Idea: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var whyItMatters: String
+    var sketch: String
+    var addedDate: Date = Date()
+    var syncState: SyncState = .pending
 }

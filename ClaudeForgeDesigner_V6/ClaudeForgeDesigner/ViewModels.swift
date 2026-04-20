@@ -75,6 +75,20 @@ final class WizardViewModel: ObservableObject {
 
     @Published var bugs: [Bug] = []
 
+    @Published var ideas: [Idea] = []
+
+    // MARK: - Target-repo + sync state (Session 03)
+
+    @Published var targetRepoURL: URL? = RepoSyncService.targetRepoURL
+    @Published var isSyncing: Bool = false
+    @Published var lastSyncMessage: String = ""
+    @Published var syncFailure: String? = nil
+
+    var pendingHazardCount: Int { hazards.filter { $0.syncState == .pending }.count }
+    var pendingBugCount: Int    { bugs.filter { $0.syncState == .pending }.count }
+    var pendingIdeaCount: Int   { ideas.filter { $0.syncState == .pending }.count }
+    var pendingTotalCount: Int  { pendingHazardCount + pendingBugCount + pendingIdeaCount }
+
     @Published var importedScreenshots: [ImportedScreenshot] = []
     @Published var screenshotUsageNotes = "Add screenshots or images of bugs, inspiration apps, layouts, components, or visual ideas. The exported prompts will reference these files so Claude can reason from them."
 
@@ -263,7 +277,7 @@ final class WizardViewModel: ObservableObject {
         importedScreenshots.removeAll { $0.id == screenshot.id }
     }
 
-    // MARK: - HUD capture (Session 02)
+    // MARK: - HUD capture (Session 02 / 03)
 
     func addHazard(title: String, whyItBites: String, howToHandle: String) {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -274,11 +288,13 @@ final class WizardViewModel: ObservableObject {
             howToHandle: howToHandle.trimmingCharacters(in: .whitespacesAndNewlines)
         ))
         regenerateFiles()
+        persistCapturesIfTargetSet()
     }
 
     func removeHazard(_ hazard: Hazard) {
         hazards.removeAll { $0.id == hazard.id }
         regenerateFiles()
+        persistCapturesIfTargetSet()
     }
 
     func addBug(title: String, symptom: String, suspectedArea: String) {
@@ -290,11 +306,31 @@ final class WizardViewModel: ObservableObject {
             suspectedArea: suspectedArea.trimmingCharacters(in: .whitespacesAndNewlines)
         ))
         regenerateFiles()
+        persistCapturesIfTargetSet()
     }
 
     func removeBug(_ bug: Bug) {
         bugs.removeAll { $0.id == bug.id }
         regenerateFiles()
+        persistCapturesIfTargetSet()
+    }
+
+    func addIdea(title: String, whyItMatters: String, sketch: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+        ideas.append(Idea(
+            title: trimmedTitle,
+            whyItMatters: whyItMatters.trimmingCharacters(in: .whitespacesAndNewlines),
+            sketch: sketch.trimmingCharacters(in: .whitespacesAndNewlines)
+        ))
+        regenerateFiles()
+        persistCapturesIfTargetSet()
+    }
+
+    func removeIdea(_ idea: Idea) {
+        ideas.removeAll { $0.id == idea.id }
+        regenerateFiles()
+        persistCapturesIfTargetSet()
     }
 
     func addScreenshotFromURL(_ url: URL, caption: String) {
@@ -303,6 +339,160 @@ final class WizardViewModel: ObservableObject {
             ? "Reference image captured via ClaudeForge HUD."
             : trimmed
         importedScreenshots.append(ImportedScreenshot(sourceURL: url, note: note))
+    }
+
+    // MARK: - Target repo + sync
+
+    func chooseTargetRepo() {
+        if let picked = RepoSyncService.promptForTargetRepo() {
+            targetRepoURL = picked
+            // First pick → do a full read-merge-write so any pre-existing blocks in
+            // the repo are absorbed into in-memory state.
+            refreshFromRepoIfTargetSet()
+        }
+    }
+
+    func clearTargetRepo() {
+        RepoSyncService.targetRepoURL = nil
+        targetRepoURL = nil
+    }
+
+    /// Pure write: the in-memory collections are the source of truth. Call this on
+    /// user capture add/remove — it will NOT resurrect deleted blocks.
+    func persistCapturesIfTargetSet() {
+        guard let root = targetRepoURL else { return }
+        do {
+            try RepoSyncService.writeCapturesToRepo(
+                targetRoot: root,
+                hazards: hazards,
+                bugs: bugs,
+                ideas: ideas,
+                defaultHazardIntro: TemplateService.hazardsIntro(),
+                defaultBugIntro: TemplateService.bugsIntro(),
+                defaultIdeaIntro: TemplateService.ideasIntro()
+            )
+            syncFailure = nil
+        } catch {
+            syncFailure = "Couldn't write to target repo: \(error.localizedDescription)"
+        }
+    }
+
+    /// Read-merge-write: absorbs blocks present in the repo's capture files but absent
+    /// from in-memory (e.g., added manually or by an AI agent since last HUD open),
+    /// then writes the unified state back. Call on HUD appear or explicit refresh —
+    /// NOT on add/remove, because this would resurrect just-deleted blocks.
+    func refreshFromRepoIfTargetSet() {
+        guard let root = targetRepoURL else { return }
+        do {
+            let merged = try RepoSyncService.refreshFromRepo(
+                targetRoot: root,
+                hazards: hazards,
+                bugs: bugs,
+                ideas: ideas,
+                defaultHazardIntro: TemplateService.hazardsIntro(),
+                defaultBugIntro: TemplateService.bugsIntro(),
+                defaultIdeaIntro: TemplateService.ideasIntro()
+            )
+            if merged.hazards.count != hazards.count { hazards = merged.hazards }
+            if merged.bugs.count != bugs.count       { bugs = merged.bugs }
+            if merged.ideas.count != ideas.count     { ideas = merged.ideas }
+            syncFailure = nil
+        } catch {
+            syncFailure = "Couldn't refresh from target repo: \(error.localizedDescription)"
+        }
+    }
+
+    /// Runs git add / commit / push in the target repo for the three capture files.
+    func syncToRepo() {
+        guard let root = targetRepoURL else {
+            syncFailure = RepoSyncError.noTargetRepo.localizedDescription
+            return
+        }
+
+        // Make sure the files on disk are current before committing.
+        persistCapturesIfTargetSet()
+
+        let pendingH = pendingHazardCount
+        let pendingB = pendingBugCount
+        let pendingI = pendingIdeaCount
+        let message = commitMessage(hazards: pendingH, bugs: pendingB, ideas: pendingI)
+
+        isSyncing = true
+        syncFailure = nil
+        lastSyncMessage = ""
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let summary = try RepoSyncService.syncCommit(
+                    targetRoot: root,
+                    message: message,
+                    pendingHazards: pendingH,
+                    pendingBugs: pendingB,
+                    pendingIdeas: pendingI
+                )
+                DispatchQueue.main.async {
+                    // Mark everything synced. (Push failures are reported in `summary` but
+                    // the commit still landed locally — acceptable to flip state.)
+                    self.markAllSynced()
+                    self.lastSyncMessage = summary
+                    self.isSyncing = false
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.syncFailure = error.localizedDescription
+                    self.isSyncing = false
+                }
+            }
+        }
+    }
+
+    private func markAllSynced() {
+        for i in hazards.indices { hazards[i].syncState = .synced }
+        for i in bugs.indices    { bugs[i].syncState = .synced }
+        for i in ideas.indices   { ideas[i].syncState = .synced }
+    }
+
+    private func commitMessage(hazards h: Int, bugs b: Int, ideas i: Int) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        let date = df.string(from: Date())
+        var parts: [String] = []
+        if h > 0 { parts.append("\(h) hazard\(h == 1 ? "" : "s")") }
+        if b > 0 { parts.append("\(b) bug\(b == 1 ? "" : "s")") }
+        if i > 0 { parts.append("\(i) idea\(i == 1 ? "" : "s")") }
+        if parts.isEmpty { parts.append("no new captures") }
+        return "Capture: \(parts.joined(separator: ", ")) — \(date)"
+    }
+
+    // MARK: - Restore from History
+
+    func restoreRemovedBlock(_ block: RemovedCaptureBlock) {
+        func fieldValue(_ label: String) -> String {
+            block.fields.first(where: { $0.hasPrefix(label + ": ") })
+                .map { String($0.dropFirst(label.count + 2)) } ?? ""
+        }
+        switch block.file {
+        case "HAZARDS.md":
+            addHazard(
+                title: block.title,
+                whyItBites: fieldValue("Why it bites"),
+                howToHandle: fieldValue("How to handle")
+            )
+        case "BUGS.md":
+            addBug(
+                title: block.title,
+                symptom: fieldValue("Symptom"),
+                suspectedArea: fieldValue("Suspected area")
+            )
+        case "IDEAS.md":
+            addIdea(
+                title: block.title,
+                whyItMatters: fieldValue("Why it matters"),
+                sketch: fieldValue("Sketch")
+            )
+        default:
+            break
+        }
     }
 
     func exportPack() {
