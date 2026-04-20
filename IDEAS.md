@@ -10,14 +10,6 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 
 ---
 
-## I'm so smart
-
-**Why it matters:** AN idea is born
-
-**Sketch:** Things happend and you are impressed
-
----
-
 ## Another brilliant idea from me
 
 **Why it matters:** Hi
@@ -47,3 +39,11 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 **Why it matters:** Pooping is key to life. Desruction clears way for growth
 
 **Sketch:** Ideas falling out of my head
+
+---
+
+## I'm so smart
+
+**Why it matters:** AN idea is born
+
+**Sketch:** Things happend and you are impressed
