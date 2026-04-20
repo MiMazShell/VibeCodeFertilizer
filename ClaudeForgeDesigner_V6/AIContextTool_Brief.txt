@@ -1,0 +1,357 @@
+================================================================================
+  AI CONTEXT TOOL — DESIGN BRIEF & FEATURE IDEAS
+  From lived experience across the CarePort build sessions
+  Generated April 19, 2026
+================================================================================
+
+Purpose
+-------
+You're planning an app that helps humans produce the context an AI coding
+agent needs to be useful. This document is feedback on what actually matters,
+drawn from the CarePort sessions — both what saved time and what burned it.
+Everything here is concrete and ranked by value so you can decide what to
+build first.
+
+
+────────────────────────────────────────────────────────────────────────────────
+THE REAL PROBLEM YOU'RE SOLVING
+────────────────────────────────────────────────────────────────────────────────
+
+Every coding agent session starts with a context gap. The agent knows Swift,
+Git, the OOXML spec, macOS frameworks — but has no idea what YOUR app is, what
+the conventions are, what's fragile, what's been tried, what's deliberate, or
+what's a vestigial artifact.
+
+Closing that gap takes time on every session. The state of the art right now
+is "the human types the context back into the chat each time, imperfectly."
+You're proposing to codify it instead. That's the right move.
+
+
+────────────────────────────────────────────────────────────────────────────────
+CORE FEATURES — RANKED BY VALUE
+────────────────────────────────────────────────────────────────────────────────
+
+#1. HAZARDS FILE (highest value for least effort)
+
+A dedicated file agents are told to read FIRST. Not architecture, not features —
+just: "Here's what has burned previous agents in this repo."
+
+Example entries from CarePort that would have saved hours:
+  • "This repo has a mirror folder at CareManagerApp/CareManagerApp/ that is
+    NOT compiled but still exists on disk. DO NOT bother mirroring files to
+    it; it's legacy and will be deleted." (I didn't know this until very late
+    and had been dutifully copying every edit to both paths.)
+  • "project.pbxproj uses hand-assigned UUIDs for new files. Use hex-24
+    patterns that don't conflict with existing UUIDs. Example: AB12CD..."
+  • "TrackerEngine generates OOXML by hand. Silent bugs here cost weeks.
+    Always unzip the produced .xlsx and diff before assuming output is right."
+
+Format: markdown bullets. Kept short. One page max.
+
+Key insight: the hazards file's value compounds over time as real issues get
+captured. Your tool should make it stupid-easy to append a new hazard from the
+terminal or a menu bar entry, so users add them in the moment instead of
+forgetting.
+
+
+#2. PROJECT PLAN + GAP ANALYSIS (this actually existed on CarePort, very good)
+
+Mid-session, when the user asked "what's left in the original plan?", two
+documents saved me an hour of re-discovery:
+
+  • CarePort_ProjectPlan.txt — phase list with status markers ([✓] shipped,
+    [ ] pending), key files map, explicit backlog.
+
+  • GapAnalysis_Apr19.txt — retrospective at the end of a prior session. What
+    was planned vs what actually happened, with why.
+
+The gap doc is especially valuable because AI sessions drift. The original
+plan and the actual work diverge. Capturing WHY they diverged lets the next
+session pick up without re-litigating prior decisions.
+
+Your tool should:
+  - Generate initial templates from a short user briefing.
+  - Auto-remind the user to update them at end-of-session.
+  - Surface them at session start so the agent reads them without being
+    prompted.
+
+
+#3. LIVING FEATURE INVENTORY
+
+Architecture docs go stale fast. A list of user-visible features tends to
+stay current longer because everyone knows when a feature ships or breaks.
+
+Format idea: a CSV or markdown table with columns:
+  Feature | Status (SHIPPED / PARTIAL / PLANNED / BROKEN) | Entry point | Notes
+
+Example row:
+  Merge Duplicates | SHIPPED | Sidebar → Admin → Merge Duplicates | Scanner
+    uses three rules: MR#, last+DOB, full name. See MergeDuplicatesView.swift.
+
+The entry-point column is gold — it tells the agent "go look here" in two
+seconds instead of twenty.
+
+Stretch: generate this from the running app by scraping sidebar entries +
+file headers. Not required for v1.
+
+
+#4. COMMANDS FILE
+
+A file listing every invocation the agent needs. Copy-paste ready.
+
+CarePort example:
+  BUILD DEBUG:    xcodebuild -scheme CareManagerApp -configuration Debug build
+  RUN:            open /path/to/CareManagerApp.app
+  LOG STREAM:     log stream --predicate 'process == "CareManagerApp"'
+  REGEN TRACKER:  Sidebar → Tracker Generator → Generate
+  TESTS:          (none yet — see CareManagerAppTests/ README for setup)
+
+Also: environment variables, required CLI tools, ports used, etc.
+
+Prevents the agent from guessing incantations. Every "hmm, I wonder how this
+project builds" round-trip wastes 30 seconds.
+
+
+#5. CONVENTIONS FILE
+
+"How we do things here." Should be brief — 1 page, not a style guide book.
+
+Example entries:
+  • @MainActor on all ObservableObject stores. No off-main DB access.
+  • New Swift files go through pbxproj manually; don't rely on Xcode to
+    auto-add (it has historically skipped them in this project).
+  • Date math uses `Calendar.current.dateComponents([.year, .month], ...)`.
+    Avoid raw timeIntervalSince1970 arithmetic — we've been bitten by DST.
+  • Audit logging is INSIDE the same db.transaction { } as the mutation
+    that triggered it, so the audit is atomic with the change.
+
+
+#6. GIT / SSH ACCESS SETUP
+
+Every session with a new repo starts with "how do I get you access." This is
+friction that compounds across N projects.
+
+Your tool could:
+  - Generate an `ACCESS.md` scaffold with a checklist: gh CLI installed, SSH
+    key added, token scoped correctly, remote set, default branch named.
+  - Walk the user through `gh auth login` the first time.
+  - Write a `.claude-access.md` that the agent can read and follow.
+  - Scaffold `.gitignore` with sensible defaults by project type (Xcode adds
+    a bunch of DerivedData / xcuserdata noise; Node has node_modules, etc).
+
+Even just bundling the knowledge of "here's the happy path for granting a
+Claude Code session write access to a GitHub repo" would save real time.
+
+
+#7. PBXPROJ / BUILD-SYSTEM SCAFFOLDING
+
+This one's Xcode-specific but applies to any project with fiddly build-system
+config. Hand-editing pbxproj for:
+  - Adding a new Swift file to the build
+  - Adding a new folder group to the navigator
+  - Adding a unit test target
+  - Adding an asset catalog reference
+
+…is error-prone and I dodged doing the full "add XCTest target" step in
+CarePort because the UUID surgery is genuinely risky. A tool that scaffolded
+these operations would have gotten a senior-project a full letter grade
+higher.
+
+Similar pain points exist in CMakeLists.txt, setup.py, Cargo.toml, etc. Any
+build system where adding a new file requires touching config.
+
+
+────────────────────────────────────────────────────────────────────────────────
+STRETCH FEATURES
+────────────────────────────────────────────────────────────────────────────────
+
+UI DESIGN BUILDER
+
+A text-based wireframe / mockup format the agent can both generate AND read.
+Not "show me a visual editor" — that's Figma's job. What's missing is a
+TEXTUAL way to say "here's what the UI should look like" that both humans
+and agents work with.
+
+Possible format: a YAML or markdown structure describing views and their
+hierarchy.
+
+  screen: Dashboard
+    header:
+      title: "Dashboard"
+      action: { icon: printer, label: "Print Report" }
+    sections:
+      - ActionNeededCard
+      - QuickActionsRow: [Generate, Sync, Push, Merge]
+      - SummaryChips: [Active, Completed, Rate, Failed, OOS]
+
+The agent reads this and generates SwiftUI/React/etc. that matches. When the
+user changes something, they edit the YAML, and the agent re-syncs.
+
+This is ambitious — don't build it first. But it addresses a real gap:
+screenshots aren't machine-editable, and pure natural-language descriptions
+of UI lose fidelity on every retelling.
+
+
+SCREENSHOT REFERENCE LIBRARY
+
+Let users annotate screenshots and tag them with feature names. When the
+agent asks "what does the current dashboard look like," the user can point
+to a tagged reference file instead of re-describing.
+
+Integration: write a `UI-REFERENCES.md` that's the agent's first stop for
+visual questions, with relative links to PNGs.
+
+
+DESIGN TOKENS FILE
+
+A single source of truth for colors, typography, spacing. JSON or YAML.
+Agents reading this know what the accent color is without inferring from
+scattered SwiftUI code.
+
+Example:
+  colors:
+    accent: "#6B5FD4"
+    success: "#1E8E3E"
+    warning: "#B06A00"
+    danger:  "#B7292E"
+  typography:
+    title:   "-apple-system 22pt semibold"
+    body:    "-apple-system 11pt"
+    caption: "-apple-system 10pt"
+  spacing:
+    xs: 4
+    sm: 8
+    md: 14
+    lg: 22
+    xl: 32
+
+This is CarePort's real AppTheme. If it existed as a data file rather than
+scattered across AppTheme.swift, generating the Caseload Print Report HTML
+would have been faster — I had to infer colors from view code.
+
+
+APP ICON + ASSET GENERATION
+
+CarePort's asset catalog was a source of genuine bugs: the icon disappeared
+from the archived .app because the catalog wasn't referenced in pbxproj.
+
+Your tool could:
+  - Take a single 1024×1024 source icon and generate every required size
+    (macOS wants 16/32/128/256/512 at 1x and 2x).
+  - Produce the required .appiconset + Contents.json automatically.
+  - Wire it into the build system (pbxproj for Xcode; equivalents for other
+    tools).
+
+Bonus: also generate placeholder screenshots (screen recording → selected
+frames → cropped to required sizes for App Store submission, etc.).
+
+
+SESSION HANDOFF NOTES
+
+End-of-session, write a short "here's where I left off" file. Format:
+  • Current branch: <name>
+  • Last commit: <sha + message>
+  • In-progress work: <open files, what's half-done>
+  • Blocked on: <user decisions, external dependencies>
+  • Next most valuable step: <agent's recommendation>
+
+The agent reads this at the START of the next session instead of asking
+"where were we?" for five minutes.
+
+
+────────────────────────────────────────────────────────────────────────────────
+DESIGN PRINCIPLES (TAKEAWAYS FROM CAREPORT)
+────────────────────────────────────────────────────────────────────────────────
+
+1. Stale docs are worse than no docs.
+   A feature inventory that claims Phase 1D is "pending" when it actually
+   shipped months ago poisons the agent's reasoning. Build in reminders to
+   update, or auto-generate from ground truth (git log, file mtimes, etc.).
+
+2. One document, one job.
+   CarePort's best docs each had a narrow purpose: PHASE = status,
+   ARCHITECTURE = invariants, COLUMNS = tracker spec. The worst docs tried
+   to be everything. Keep your generated files single-purpose.
+
+3. Include the WHY, not just the WHAT.
+   Hazards work because they explain why the hazard matters. Conventions
+   work because they justify the rule. Bare rules get ignored; rules with
+   reasons get followed.
+
+4. Terminal-friendly output.
+   Everything should be plain text. Markdown is fine; rich formats (PDF,
+   DOCX) are not — the agent can't grep them efficiently, and humans can't
+   paste snippets into chats without losing formatting.
+
+5. Minimize copy-paste.
+   The user said it themselves — copy-pasting in the terminal sucks. Design
+   for files that live in the repo and get read automatically.
+
+6. Respect the agent's context window.
+   Agent context is expensive. A 200-line CLAUDE.md read at every session
+   start is reasonable; a 2000-line architecture manual is not. Your tool
+   should help users produce LEAN context, not exhaustive reference books.
+
+
+────────────────────────────────────────────────────────────────────────────────
+ANTI-FEATURES (WHAT NOT TO BUILD)
+────────────────────────────────────────────────────────────────────────────────
+
+✗ A "generate a CLAUDE.md from scratch" one-shot wizard.
+  Generated boilerplate gets ignored. The value is in the discipline of
+  MAINTAINING these docs. Build the update flow first; the initial template
+  is less important.
+
+✗ A "Claude optimizer" that adds more context automatically.
+  Adding context that the user didn't curate is how you blow past token
+  budgets without adding signal. Prefer less-but-curated to more-but-noisy.
+
+✗ A chat wrapper around Claude.
+  Claude already has chat wrappers. Your tool's value is project state
+  management, not inference.
+
+✗ A UI design tool that competes with Figma.
+  Textual wireframes for agents? Yes. Visual design? Use Figma.
+
+✗ Anything that requires the agent to change its own behavior.
+  Your tool should produce artifacts that work with any agent (Claude Code,
+  Cursor, Aider, etc.). Don't build around one tool's specifics.
+
+
+────────────────────────────────────────────────────────────────────────────────
+MINIMUM VIABLE PRODUCT
+────────────────────────────────────────────────────────────────────────────────
+
+If you built only these three things, it would already be useful to me:
+
+1. A `caramba init <project-name>` command that creates a standard docs
+   folder with templates for: CLAUDE.md, HAZARDS.md, COMMANDS.md, PROJECT_PLAN.md.
+
+2. A menu-bar or CLI app to append a hazard ("caramba hazard 'the mirror
+   folder eats time'") without leaving the terminal.
+
+3. An end-of-session prompt: "Update any of these docs? [Y/n]" that lists
+   them and opens whichever the user picks.
+
+Everything else in this brief is an enhancement. Ship the minimum first.
+
+
+────────────────────────────────────────────────────────────────────────────────
+FINAL THOUGHT
+────────────────────────────────────────────────────────────────────────────────
+
+The most valuable context files in the CarePort repo were the ones the user
+wrote manually — the plan, the gap analysis, the architecture doc. The
+least valuable were the auto-generated stubs from earlier tooling (empty
+Package.swift, half-edited pbxproj group entries).
+
+The bottleneck isn't generation. It's capture. Build a tool that makes it
+easy to CAPTURE what the user already knows — the hazards they stumbled
+over, the decisions they made, the commands they actually use — and surface
+that to the agent at the right time. That's the win.
+
+Good luck with the build.
+
+================================================================================
+  End of brief.
+================================================================================
