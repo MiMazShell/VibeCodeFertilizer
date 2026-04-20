@@ -31,3 +31,11 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 **Why it matters:** TO ensure we don't have descrepencies between the local and gitHub repos we should mayby sync/reconcile when the app opens?
 
 **Sketch:** App opens,syc validation screen appears if there are conflicts otherwise happens automaticlly
+
+---
+
+## An Idea uncommited is no idea at all
+
+**Why it matters:** Ideas matter, you matter
+
+**Sketch:** Matter has weight and takes up space
