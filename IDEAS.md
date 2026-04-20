@@ -10,6 +10,14 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 
 ---
 
+## I'm so smart
+
+**Why it matters:** AN idea is born
+
+**Sketch:** Things happend and you are impressed
+
+---
+
 ## Another brilliant idea from me
 
 **Why it matters:** Hi
