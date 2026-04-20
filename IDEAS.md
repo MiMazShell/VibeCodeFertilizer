@@ -47,3 +47,27 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 **Why it matters:** AN idea is born
 
 **Sketch:** Things happend and you are impressed
+
+---
+
+## A trashy idea
+
+**Why it matters:** an idea for me to trash
+
+**Sketch:** a trash for me to idea
+
+---
+
+## another trashy idea 2
+
+**Why it matters:** _(no rationale captured)_
+
+**Sketch:** _(no sketch captured)_
+
+---
+
+## a third tashy idea
+
+**Why it matters:** _(no rationale captured)_
+
+**Sketch:** _(no sketch captured)_
