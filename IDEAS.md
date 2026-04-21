@@ -104,3 +104,10 @@ Capture ideas from the ClaudeForge HUD as they come up. Agents should read this 
 
 **Sketch:** Use MenuBarExtra's custom label closure to render Image(hammer) + Text("\(count)") when count > 0. When 0, icon-only. Experiment with whether macOS renders text in menu bar cleanly at both light/dark appearances.
 
+---
+
+## This is a new Idea
+
+**Why it matters:** Did it work
+
+**Sketch:** I can't see the cursor.
